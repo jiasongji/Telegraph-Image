@@ -1,0 +1,19 @@
+name = "telegraph-image"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-26"
+
+[[kv_namespaces]]
+binding = "img_url"
+id = "ad326d0091b24d4cbc40098e53e85432"
+
+[[r2_buckets]]
+binding = "img_r2"
+bucket_name = "telegraph-image-r2"
+
+[ai]
+binding = "AI"
+
+[vars]
+STORAGE_PROVIDER = "telegram"
+MODERATION_PROVIDER = "cloudflare-ai"
+SITE_BACKGROUND = "/bg.svg"
