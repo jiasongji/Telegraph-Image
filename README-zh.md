@@ -91,7 +91,6 @@
 | `SITE_BACKGROUND`   | `https://.../bg.jpg`   | 首页背景图 URL。 |
 | `HIDE_ADMIN_ENTRY`  | `true`                 | 隐藏首页上的后台入口链接（/admin 页面本身仍可访问）。 |
 | `WhiteList_Mode`    | `true`                 | 白名单模式：只有加入白名单的图片才能被加载。 |
-| `disable_telemetry` | `true`                 | 退出远端遥测。 |
 
 绑定（`设置`->`函数`）：
 
@@ -255,7 +254,7 @@ curl -u uploader:strong-password -F "file=@/path/to/image.png" https://your.doma
 
 其实更新非常简单，只需要参照更新日志的内容，先进入到 Cloudflare Pages 后台，把需要使用的环境变量提前设置好并绑定上 KV 命名空间，然后去到 Github 你之前 fork 过的仓库依次选择`Sync fork`->`Update branch`即可，稍等一会，Cloudflare Pages 那边检测到你的仓库更新了之后就会自动部署最新的代码了
 
-也可以开启自动同步：fork 之后前往你仓库的 Actions 页面启用 Workflows 并开启 Upstream Sync Action，即可每小时自动与上游同步（详见[更新日志](#更新日志) 2024 年 7 月部分的图文说明）。
+本私用分支只保留手动上游同步，以便部署前审查安全和隐私变更。确认上游改动后，可在 Actions 页面手动运行 Upstream Sync 工作流。
 
 ## 常见问题
 
@@ -358,9 +357,7 @@ Hostloc @feixiang 和@乌拉擦 提供的思路和代码
     如果你想让手动立即更新，可以查看 [Github 的文档](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) 了解如何让 fork 的项目与上游代码同步。
 
     你可以 star/watch 本项目或者 follow 作者来及时获得新功能更新通知。
-- 添加远端遥测
-
-    可通过添加`disable_telemetry`环境变量退出遥测
+- 本私用分支已移除远端遥测。
 
 2023 年 1 月 18 日--图片管理功能更新
 

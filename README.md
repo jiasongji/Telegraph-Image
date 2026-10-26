@@ -91,7 +91,6 @@ Optional environment variables (enable features as needed, see the [Optional Fea
 | `SITE_BACKGROUND`   | `https://.../bg.jpg`      | Background image URL for the homepage.                                                |
 | `HIDE_ADMIN_ENTRY`  | `true`                    | Hides the dashboard link on the homepage (the /admin page itself stays reachable).    |
 | `WhiteList_Mode`    | `true`                    | Whitelist mode: only whitelisted images can be loaded.                                |
-| `disable_telemetry` | `true`                    | Opt out of remote telemetry.                                                          |
 
 Bindings (`Settings` -> `Functions`):
 
@@ -255,7 +254,7 @@ In addition, changes made to environment variables will take effect on the next 
 
 Updating is actually very simple. Just refer to the update log, first go to the Cloudflare Pages backend, set the required environment variables in advance and bind the KV namespace, then go to your previously forked repository on Github and select `Sync fork`->`Update branch`. After a while, Cloudflare Pages will detect that your repository has been updated and will automatically deploy the latest code
 
-You can also enable automatic syncing: after forking, go to your repository's Actions page, enable Workflows and the Upstream Sync Action to sync with upstream hourly (see the July 2024 section of the [Update Log](#update-log) for illustrated instructions).
+This private fork keeps upstream syncing manual so security and privacy changes can be reviewed before deployment. Run the Upstream Sync workflow from the Actions page only after reviewing upstream changes.
 
 ## FAQ
 
@@ -351,9 +350,7 @@ July 6, 2024 - Backend Management Page Update
     If you want to manually update immediately, you can check [Github's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) to learn how to sync your forked project with upstream code.
 
     You can star/watch this project or follow the author to receive notifications of new feature updates.
-- Added remote telemetry
-
-    You can opt out of telemetry by adding the `disable_telemetry` environment variable
+- Remote telemetry was removed from this fork for private deployments.
 
 January 18, 2023 - Image Management Feature Update
 

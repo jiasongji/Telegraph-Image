@@ -9,7 +9,7 @@
 <style>
 /* Design tokens carried over from the original Nuxt homepage so the look stays
    continuous: #0297f8 pill buttons, #5e6878 body copy, a white card with the
-   bg.svg crest and the same soft double shadow, over a wallpaper backdrop with
+   bg.svg crest and the same soft double shadow, over a local backdrop with
    a 240deg tint. */
 :root {
   --accent: #0297f8;
@@ -31,36 +31,22 @@ body {
   color: var(--body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Fallback gradient shows immediately and stays put if the wallpaper request
-     fails, so the page is never a flat white screen. */
+  /* The local background keeps this private deployment independent of external
+     wallpaper services. */
   background: linear-gradient(160deg, #1b2440 0%, #35406b 45%, #6f5878 75%, #b3766a 100%);
 }
 
-/* ---- wallpaper slideshow (cross-fading, mirrors the original 30s cycle) ---- */
-#backdrop { position: fixed; inset: 0; z-index: -2; overflow: hidden; }
-#backdrop figure {
-  position: absolute; inset: 0; margin: 0;
-  background-size: cover; background-position: center; background-repeat: no-repeat;
-  opacity: 0; will-change: opacity;
-  animation: wallpaper 30s linear infinite;
-  backface-visibility: hidden;
-}
-@keyframes wallpaper {
-  0%   { opacity: 0 }
-  3%   { opacity: 1 }
-  20%  { opacity: 1 }
-  28%  { opacity: 0 }
-  100% { opacity: 0 }
+/* ---- local backdrop ---- */
+#backdrop {
+  position: fixed; inset: 0; z-index: -2; overflow: hidden;
+  background:
+    linear-gradient(145deg, rgba(21, 33, 66, .82), rgba(83, 67, 108, .62)),
+    url('/bg.svg') center / cover no-repeat;
 }
 #tint {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(240deg, rgba(150, 50, 50, .3), rgba(0, 0, 200, 0));
 }
-@media (prefers-reduced-motion: reduce) {
-  #backdrop figure { animation: none; }
-  #backdrop figure:first-child { opacity: 1; }
-}
-
 /* ---- page frame ---- */
 .page { min-height: 100vh; display: flex; flex-direction: column; padding: 30px; }
 .topbar { display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
@@ -341,28 +327,6 @@ footer a:hover { opacity: .75; }
   var fileCount = document.getElementById('file-count');
   var toast = document.getElementById('toast');
   var toastTimer = null;
-
-  // ---- wallpaper slideshow ----
-  // Mirrors the original homepage: five Bing pictures cross-fading on a 30s
-  // cycle, 6s apart. Any failure leaves the CSS gradient in place.
-  (function loadWallpapers() {
-    fetch('/api/bing/wallpaper').then(function (res) {
-      if (!res.ok) throw new Error('wallpaper unavailable');
-      return res.json();
-    }).then(function (payload) {
-      var images = (payload && payload.data) || [];
-      if (!images.length) return;
-      var backdrop = document.getElementById('backdrop');
-      images.slice(0, 5).forEach(function (image, index) {
-        if (!image || !image.url) return;
-        var figure = document.createElement('figure');
-        var url = /^https?:/.test(image.url) ? image.url : 'https://cn.bing.com' + image.url;
-        figure.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
-        figure.style.animationDelay = (index * 6) + 's';
-        backdrop.appendChild(figure);
-      });
-    }).catch(function () { /* gradient fallback already painted */ });
-  })();
 
   // ---- site config (/api/config) ----
   fetch('/api/config').then(function (res) {

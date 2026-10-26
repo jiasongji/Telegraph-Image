@@ -1,6 +1,9 @@
 node_modules/.bin/*
 node_modules/.mf/*
+node_modules/.cache/*
 .wrangler/*
+.zcode/
 data/*
 data-broken/*
 test/e2e/output/*
+gui-test-screenshots/*

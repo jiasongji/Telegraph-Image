@@ -1,8 +1,10 @@
 import {
     LABEL,
-    getOrCreateMetadata,
+    createDefaultMetadata,
+    getMetadata,
     isBlocked,
     isWhitelisted,
+    normalizeMetadata,
     putMetadata,
 } from "../utils/metadata.js";
 import { isShortUrlsEnabled, looksLikeShortId, resolveShortId } from "../utils/shortlink.js";
@@ -32,44 +34,40 @@ export async function onRequest(context) {
     // If the response is OK, proceed with further checks
     if (!response.ok) return response;
 
-    // Allow the admin page to directly view the image
-    const isAdmin = request.headers.get('Referer')?.includes(`${url.origin}/admin`);
-    if (isAdmin) {
-        return withFileHeaders(response, fileId);
-    }
-
     // Check if KV storage is available
     if (!env.img_url) {
         console.log("KV storage not available, returning image directly");
         return withFileHeaders(response, fileId);  // Directly return image response, terminate execution
     }
 
-    const metadata = await getOrCreateMetadata(env, fileId);
+    const storedMetadata = await getMetadata(env, fileId);
+    const metadata = storedMetadata
+        ? normalizeMetadata(storedMetadata, fileId)
+        : createDefaultMetadata(fileId);
 
     // Handle based on ListType and Label
     if (isWhitelisted(metadata)) {
         return withFileHeaders(response, fileId);
     } else if (isBlocked(metadata)) {
-        const referer = request.headers.get('Referer');
-        const redirectUrl = referer ? "https://static-res.pages.dev/teleimage/img-block-compressed.png" : `${url.origin}/block-img.html`;
-        return Response.redirect(redirectUrl, 302);
+        return Response.redirect(`${url.origin}/block-img.html`, 302);
     }
 
     // Check if WhiteList_Mode is enabled
     if (env.WhiteList_Mode === "true") {
+        if (!storedMetadata) {
+            await putMetadata(env, fileId, metadata);
+        }
         return Response.redirect(`${url.origin}/whitelist-on.html`, 302);
     }
 
-    // If no metadata or further actions required, moderate content and add to KV if needed
     const moderationResult = await moderateFile(env, url, fileId, metadata, response);
-    if (moderationResult.blocked) {
+    if (!storedMetadata || moderationResult.changed) {
         await putMetadata(env, fileId, metadata);
-        return Response.redirect(`${url.origin}/block-img.html`, 302);
     }
 
-    // Only save metadata if content is not adult content
-    // Adult content cases are already handled above and will not reach this point
-    await putMetadata(env, fileId, metadata);
+    if (moderationResult.blocked) {
+        return Response.redirect(`${url.origin}/block-img.html`, 302);
+    }
 
     // Return file content
     return withFileHeaders(response, fileId);
@@ -131,7 +129,7 @@ async function moderateFile(env, url, fileId, metadata, response) {
     // A stored verdict is final — re-moderating every view would burn provider
     // quota (and for Workers AI, neuron allocation) for no new information.
     if (metadata.Label && metadata.Label !== LABEL.NONE) {
-        return { blocked: isBlocked(metadata) };
+        return { blocked: isBlocked(metadata), changed: false };
     }
 
     try {
@@ -143,13 +141,15 @@ async function moderateFile(env, url, fileId, metadata, response) {
         });
 
         if (label) {
+            const changed = metadata.Label !== label;
             metadata.Label = label;
+            return { blocked: isBlocked(metadata), changed };
         }
     } catch (error) {
         console.error("Error during content moderation: " + error.message);
     }
 
-    return { blocked: isBlocked(metadata) };
+    return { blocked: isBlocked(metadata), changed: false };
 }
 
 function withFileHeaders(response, filename) {

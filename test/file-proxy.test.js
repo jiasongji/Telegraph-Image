@@ -394,9 +394,11 @@ describe('file proxy function', function () {
     assert.strictEqual(fetchMock.calls.length, 2);
   });
 
-  it('skips KV writes for admin referers', async function () {
+  it('does not let an admin referer bypass blocked metadata', async function () {
     const onRequest = await getOnRequest();
-    const img_url = createMockKV();
+    const img_url = createMockKV({
+      'cat.png': { ...baseMetadata, ListType: 'Block' },
+    });
     const headers = new Headers({ Referer: 'https://example.com/admin.html' });
 
     fetchMock = installFetchMock(async () => new Response('image-body', { status: 200 }));
@@ -407,9 +409,31 @@ describe('file proxy function', function () {
       params: { id: 'cat.png' },
     }));
 
+    assert.strictEqual(res.status, 302);
+    assert.strictEqual(res.headers.get('Location'), 'https://example.com/block-img.html');
+    assert.deepStrictEqual(img_url.operations.get, ['cat.png']);
+    assert.deepStrictEqual(img_url.operations.put, []);
+  });
+
+  it('does not rewrite KV metadata when a moderation verdict already exists', async function () {
+    const onRequest = await getOnRequest();
+    const img_url = createMockKV({
+      'cat.png': { ...baseMetadata, Label: 'everyone' },
+    });
+
+    fetchMock = installFetchMock(async () => new Response('image-body', {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' },
+    }));
+
+    const res = await onRequest(makeContext({
+      request: new Request('https://example.com/file/cat.png'),
+      env: { img_url, AI: { async run() { throw new Error('must not run'); } } },
+      params: { id: 'cat.png' },
+    }));
+
     assert.strictEqual(res.status, 200);
     assert.strictEqual(await res.text(), 'image-body');
-    assert.deepStrictEqual(img_url.operations.get, []);
     assert.deepStrictEqual(img_url.operations.put, []);
   });
 });
