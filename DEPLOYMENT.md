@@ -91,14 +91,20 @@ curl -s https://t.rcrc.eu.org/api/config
 ## 7. 隐私说明
 
 - 页面源码无任何第三方遥测（仓库 `test/privacy.test.js` 保证：无 Sentry/Hotjar/Clarity 等）。
-- 后台 UI 引用 `cdn.jsdelivr.net` 的 Vue 2 / Element UI（上游功能依赖，非遥测；如需严格自托管可 vendor 化）。
+- 后台 UI 库已全部自托管（`assets/vendor/`：Vue 2.6.14、Element UI 2.15.3、jQuery 3.6.4、Font Awesome 6.7.2），三个后台页面零第三方请求；所有引用保留/补齐了 SRI 完整性哈希。升级库版本时需重新下载并更新 SRI。
 - 页面上存在 Cloudflare Web Analytics 埋点，来自 rcrc.eu.org zone 级「自动设置」（早于本部署，同时作用于监控站）；未关闭以避免影响其它业务。如需关闭：dash → Web Analytics → rcrc.eu.org → 管理站点。
+
+## 8. 已知行为（上游设计）
+
+- **网格视图跳转**：未配置 `BASIC_USER` 时，`admin-imgtc.html` 的 `check` 接口返回 "Not using basic auth."，页面 JS 误判为未登录并跳转登录流程（manage API 本身不需要 basic auth，数据接口不受影响）。主面板与瀑布流无此问题。
+- **删除语义**：删除仅移除 KV 元数据，文件字节保留在 Telegram 侧，按完整 file_id URL 仍可取回（见第 5 节）。
 
 ## 8. 本轮部署变更记录
 
 | 提交 | 内容 |
 |---|---|
 | `b5e572d` | 空提交：激活 `TG_Bot_Token` Secret（首次部署因缺 `TG_Chat_ID` 上传报 500） |
+| `d9cf432` | 自托管后台 UI 库，移除 jsdelivr 依赖（补齐全部 SRI） |
 | `2740dfb` | 修复：`TG_Chat_ID` 补入 `wrangler.toml [vars]` |
 
 历史：`14fb777` 配置生产绑定；`95bcbc3` 私有化加固（隐私测试基线）。
