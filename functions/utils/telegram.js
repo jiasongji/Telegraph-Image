@@ -12,11 +12,10 @@ export function validateTelegramConfig(env) {
   }
 }
 
+// Images must go through sendDocument: sendPhoto re-compresses them
+// (lossy re-encode, resolution cap, EXIF/alpha stripped) and the original
+// bytes are unrecoverable. The document path stores files verbatim.
 export function getUploadTarget(file) {
-  if (file.type.startsWith('image/')) {
-    return { endpoint: 'sendPhoto', field: 'photo' };
-  }
-
   if (file.type.startsWith('audio/')) {
     return { endpoint: 'sendAudio', field: 'audio' };
   }

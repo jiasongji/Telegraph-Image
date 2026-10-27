@@ -60,7 +60,7 @@ t.rcrc.eu.org  CNAME  telegraph-image-44h.pages.dev  (proxied)
 
 ## 5. 存储与审核流程
 
-- **上传**：登录用户（或持 Service Token）`POST /upload`（multipart 字段 `file`）→ 经 Bot API 转存 Telegram → 返回 `[{src:"/file/<telegram_file_id>.png"}]`。
+- **上传**：登录用户（或持 Service Token）`POST /upload`（multipart 字段 `file`）→ 经 Bot API 转存 Telegram → 返回 `[{src:"/file/<telegram_file_id>.png"}]`。图片（`image/*`）走 `sendDocument` 文件通道，Telegram **原样存储字节**，不经过 sendPhoto 的强制重压缩（此前 74.7KB 的 JPEG 会被压到 18.5KB）；EXIF、PNG/WebP 透明通道、GIF 动画均保留。服务端 `getFile` 下载上限 20 MB（Bot API 硬限制），超过 20 MB 的文件能传不能取。改动前上传的旧文件仍是 sendPhoto 压缩版，需原图时重新上传。
 - **访问**：`/file/<id>` 公开免登。首次访问触发 Workers AI 审核（模型链：`@cf/meta/llama-3.2-11b-vision-instruct` → `@cf/llava-hf/llava-1.5-7b-hf`，动态目录缓存在 KV `moderation:live-models`），判定写入元数据 `Label`（`everyone` / `adult`）；`adult` 重定向 `/block-img`。
 - **审核恰好一次**：`Label ≠ None` 的文件后续访问直接复用结论（实测首访 2.7s 含推理，复访 0.4s）。
 - **Fail-open 例外**：模型对无法判定内容（如实测的 1×1 像素图）返回空判定时 `Label=None`，文件照常服务，且**每次访问都会重试审核**——上游设计权衡，部署此类异常文件才会发生。

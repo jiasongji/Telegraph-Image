@@ -27,23 +27,23 @@ describe('upload function', function () {
     });
   }
 
-  it('uploads images with sendPhoto and stores metadata in KV', async function () {
+  it('uploads images as documents without recompression and stores metadata in KV', async function () {
     const { onRequestPost } = await import('../functions/upload.js');
     const img_url = createMockKV();
 
     fetchMock = installFetchMock(async (input, init) => {
-      assert.strictEqual(String(input), 'https://api.telegram.org/botbot-token/sendPhoto');
+      assert.strictEqual(String(input), 'https://api.telegram.org/botbot-token/sendDocument');
       assert.strictEqual(init.method, 'POST');
       assert.strictEqual(init.body.get('chat_id'), '-100123');
-      assert.ok(init.body.get('photo') instanceof File);
+      const sent = init.body.get('document');
+      assert.ok(sent instanceof File);
+      assert.strictEqual(sent.name, 'cat.png');
+      assert.strictEqual(sent.type, 'image/png');
 
       return Response.json({
         ok: true,
         result: {
-          photo: [
-            { file_id: 'small-id', file_size: 10 },
-            { file_id: 'large-id', file_size: 20 },
-          ],
+          document: { file_id: 'doc-id' },
         },
       });
     });
@@ -60,10 +60,10 @@ describe('upload function', function () {
     }));
 
     assert.strictEqual(res.status, 200);
-    assert.deepStrictEqual(JSON.parse(await res.text()), [{ src: '/file/large-id.png' }]);
+    assert.deepStrictEqual(JSON.parse(await res.text()), [{ src: '/file/doc-id.png' }]);
     assert.strictEqual(fetchMock.calls.length, 1);
 
-    const stored = img_url.snapshot('large-id.png');
+    const stored = img_url.snapshot('doc-id.png');
     assert.strictEqual(stored.value, '');
     assert.strictEqual(stored.metadata.ListType, 'None');
     assert.strictEqual(stored.metadata.Label, 'None');
@@ -73,13 +73,12 @@ describe('upload function', function () {
     assert.ok(Number.isFinite(stored.metadata.TimeStamp));
   });
 
-  it('retries failed image uploads as documents', async function () {
-    const { onRequestPost } = await import('../functions/upload.js');
+  it('falls back to sendDocument when a sendPhoto upload fails', async function () {
+    const { sendToTelegram } = await import('../functions/utils/telegram.js');
 
     fetchMock = installFetchMock(async (input, init, calls) => {
       if (calls.length === 1) {
         assert.strictEqual(String(input), 'https://api.telegram.org/botbot-token/sendPhoto');
-        assert.ok(init.body.get('photo') instanceof File);
         return Response.json({ ok: false, description: 'Bad Request: wrong file identifier' }, { status: 400 });
       }
 
@@ -93,18 +92,14 @@ describe('upload function', function () {
       });
     });
 
-    const request = await createUploadRequest(new File(['image-bytes'], 'cat.webp', { type: 'image/webp' }));
-    const res = await onRequestPost(makeContext({
-      request,
-      env: {
-        disable_telemetry: 'true',
-        TG_Bot_Token: 'bot-token',
-        TG_Chat_ID: '-100123',
-      },
-    }));
+    const formData = new FormData();
+    formData.append('chat_id', '-100123');
+    formData.append('photo', new File(['image-bytes'], 'cat.webp', { type: 'image/webp' }));
 
-    assert.strictEqual(res.status, 200);
-    assert.deepStrictEqual(JSON.parse(await res.text()), [{ src: '/file/doc-id.webp' }]);
+    const result = await sendToTelegram(formData, 'sendPhoto', { TG_Bot_Token: 'bot-token' });
+
+    assert.strictEqual(result.success, true);
+    assert.deepStrictEqual(result.data, { ok: true, result: { document: { file_id: 'doc-id' } } });
     assert.strictEqual(fetchMock.calls.length, 2);
   });
 
